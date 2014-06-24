@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <stdio.h>
 #include <time.h>
+#include <TlHelp32.h>
 
 int CONNECTION_PTR_OFFSET;
 int SESSIONKEY_OFFSET;
@@ -76,10 +77,26 @@ _Bool readSessionKey(char* sessionKey)
     GetWindowThreadProcessId(WindowsHandle, &WindowsPID);
     HANDLE wow_process_handle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, WindowsPID);
 
+    DWORD baseaddr = 0;
+    MODULEENTRY32 me32;
+    me32.dwSize = sizeof(MODULEENTRY32);
+
+    HANDLE h = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, WindowsPID);
+    if (h != INVALID_HANDLE_VALUE)
+    {
+        if (Module32First(h, &me32))
+        {
+            // по идее нужно сделать проверку на имя модуля что бы me32.szModule было равно wow.exe
+            // но обычно первым идет как раз сам основной экзешник
+            baseaddr = (DWORD)me32.modBaseAddr;
+            printf("Base Addr=0x%08X\n", baseaddr);
+        }
+    }
+
     DWORD number_of_read_bytes=0;
 
     char pointer[4] = {'\0'};
-    ReadProcessMemory(wow_process_handle, (LPCVOID)CONNECTION_PTR_OFFSET, pointer, 4, &number_of_read_bytes);
+    ReadProcessMemory(wow_process_handle, (LPCVOID)(CONNECTION_PTR_OFFSET + baseaddr), pointer, 4, &number_of_read_bytes);
 
     if(number_of_read_bytes != 4)
     {
