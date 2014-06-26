@@ -16,7 +16,7 @@
 
                                 // SIZE  SIZE  CMD   CMD
 //const uint8_t MAGIC_WOW_START[] = {0x00, 0x2A, 0xEC, 0x01};
-const uint8_t MAGIC_WOW_START[] = {0x00, 0x27, 0x00, 0x85};
+const uint8_t MAGIC_WOW_START[] = {0x30, 0x00, 0x57, 0x4F};
 
 static uint8_t SESSIONKEY[SESSION_KEY_LENGTH];
 
@@ -245,16 +245,19 @@ void handleTcpPacket(uint32_t from, uint32_t to, uint16_t tcp_len, struct sniff_
             uint8_t *payload = (uint8_t*)tcppacket;
             payload += tcp_header_size;
             uint32_t payload_size = tcp_len - tcp_header_size;
+            uint32_t MWS_size = MAGIC_WOW_START[1]*256 + MAGIC_WOW_START[0];
             if(connection->state != ACTIVE)
             {
                 // check if we got the wow magic bytes
-                if(payload_size >= sizeof(MAGIC_WOW_START) && memcmp(payload, MAGIC_WOW_START, sizeof(MAGIC_WOW_START))==0)
+                if(payload_size >= (MWS_size-2) && memcmp(payload, MAGIC_WOW_START, sizeof(MAGIC_WOW_START))==0)
                 {
                     connection->state = ACTIVE;
                     printf("connection changed state: ACTIVE\n");
                 }
                 else
                 {
+                    printf("payload_size:%d MWS_size:%d %d.%d.%d.%d", payload_size, MWS_size,
+                      payload[0], payload[1], payload[2], payload[4]);
                     removeConnection(connection);
                     return;
                 }
@@ -803,7 +806,7 @@ int main(int argc, char *argv[])
 {
     if(argc < 3)
     {
-        printf("Usage: %s [-m] $dumpfile.cap $keyfile.txt\n", argv[0]);
+        printf("Usage: %s [-m] $dumpfile.pcap $keyfile.txt\n", argv[0]);
         printf("                [-m] merge output files\n");
         return 1;
     }
